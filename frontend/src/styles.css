@@ -1,0 +1,40 @@
+/* Estilos globales: reset mínimo, tipografía y fondo. Sin biblioteca de componentes. */
+
+:root {
+  color-scheme: light;
+  --fondo: #f7f4ee;
+  --texto: #2f2417;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--fondo);
+  color: var(--texto);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    sans-serif;
+  line-height: 1.5;
+  /* Evita que un valor largo fuerce scroll horizontal en pantallas estrechas. */
+  overflow-wrap: break-word;
+}
+
+img,
+svg {
+  max-width: 100%;
+  height: auto;
+}

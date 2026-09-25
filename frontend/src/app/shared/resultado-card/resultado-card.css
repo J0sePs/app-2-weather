@@ -1,0 +1,142 @@
+:host {
+  display: block;
+}
+
+.tarjeta {
+  background: #ffffff;
+  border: 1px solid #d9d2c5;
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgb(58 42 26 / 8%);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.tarjeta__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.tarjeta__titulo {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #2f2417;
+}
+
+.tarjeta__nivel {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.tarjeta__nivel[data-nivel='Bajo'] {
+  background: #e4f0e4;
+  color: #2c5c33;
+}
+
+.tarjeta__nivel[data-nivel='Moderado'] {
+  background: #fbf0d4;
+  color: #7a5a10;
+}
+
+.tarjeta__nivel[data-nivel='Alto'] {
+  background: #f9e0da;
+  color: #8c2f1c;
+}
+
+.datos {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem 1.5rem;
+}
+
+.dato dt {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b6155;
+  margin-bottom: 0.2rem;
+}
+
+.dato dd {
+  margin: 0;
+  color: #2f2417;
+}
+
+.dato__cifra {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.dato__valor {
+  font-size: 1.05rem;
+}
+
+.capacidad {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.capacidad__riel {
+  height: 0.75rem;
+  border-radius: 999px;
+  background: #ece6da;
+  overflow: hidden;
+}
+
+.capacidad__relleno {
+  height: 100%;
+  border-radius: 999px;
+  background: #6b8f4e;
+  transition: width 200ms ease-out;
+}
+
+.capacidad__relleno[data-nivel='Moderado'] {
+  background: #c9a227;
+}
+
+.capacidad__relleno[data-nivel='Alto'] {
+  background: #c4553a;
+}
+
+.capacidad__pie {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #6b6155;
+}
+
+/*
+ * El aviso se presenta como una nota, no como un dato más: cambia de bloque, lleva
+ * borde y usa un cuerpo de texto reducido, de modo que no se pueda confundir con las
+ * cifras de visitantes o aforo.
+ */
+.aviso {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border-left: 4px solid #b58105;
+  border-radius: 6px;
+  background: #fdf6e3;
+  color: #5c4a1a;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+@media (width <= 420px) {
+  .tarjeta {
+    padding: 1.1rem;
+  }
+
+  .dato__cifra {
+    font-size: 1.3rem;
+  }
+}

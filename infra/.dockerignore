@@ -1,0 +1,6 @@
+# La imagen de la aplicación se compila desde la raíz del repositorio, así que
+# aquí no hay nada que construir: sólo se ignoran los artefactos de construcción.
+
+node_modules
+dist
+.angular

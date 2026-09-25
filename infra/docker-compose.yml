@@ -1,0 +1,50 @@
+# Los dos servicios del sistema: backend FastAPI y frontend Angular tras Nginx.
+#
+# Sólo el frontend publica puertos en el host. El backend vive en la red interna
+# de Compose, y Nginx es el único que habla con el navegador, de modo que la UI
+# y la API comparten origen y no hace falta configurar CORS.
+
+services:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    image: machupicchu-backend:local
+    environment:
+      # Rutas dentro del contenedor. El Data Lake va en la imagen, así que no
+      # hace falta volumen; para usar otro CSV basta cambiar estas variables.
+      MP_RUTA_DATALAKE: /app/datalake/machupicchu_history.csv
+      MP_OPEN_METEO_BASE_URL: https://api.open-meteo.com/v1/forecast
+      MP_OPEN_METEO_TIMEOUT: "4.0"
+      MP_LOG_LEVEL: INFO
+      TZ: America/Lima
+    # `expose` documenta el puerto en la red interna sin publicarlo en el host.
+    expose:
+      - "8000"
+    restart: unless-stopped
+    healthcheck:
+      # `/health` no toca ni Open-Meteo ni el Data Lake, así que sirve de sonda
+      # aunque el proveedor externo esté caído.
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    image: machupicchu-frontend:local
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s

@@ -1,0 +1,113 @@
+:host {
+  display: block;
+}
+
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.encabezado {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.encabezado__titulo {
+  margin: 0;
+  font-size: clamp(1.35rem, 5vw, 1.9rem);
+  line-height: 1.2;
+  color: #2f2417;
+}
+
+.encabezado__subtitulo {
+  margin: 0;
+  color: #6b6155;
+  font-size: 0.95rem;
+}
+
+/* `auto-fit` con un mínimo de 150px hace que a 360px el campo y el botón se apilen
+   solos, sin necesidad de un punto de rupture adicional. */
+.control {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 1rem;
+  padding: 1rem 1.15rem;
+  background: #ffffff;
+  border: 1px solid #d9d2c5;
+  border-radius: 14px;
+}
+
+.control__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.control__etiqueta {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b6155;
+}
+
+.control__entrada {
+  width: 100%;
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  color: #2f2417;
+  background: #ffffff;
+  border: 1px solid #bfb5a5;
+  border-radius: 8px;
+}
+
+.control__entrada:focus-visible,
+.control__boton:focus-visible {
+  outline: 3px solid #b58105;
+  outline-offset: 2px;
+}
+
+.control__boton {
+  padding: 0.6rem 1.2rem;
+  font: inherit;
+  font-weight: 600;
+  color: #ffffff;
+  background: #6b8f4e;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.control__boton:disabled {
+  background: #a8b39a;
+  cursor: progress;
+}
+
+.estado {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  background: #f1efe9;
+  color: #4a4136;
+}
+
+.estado--error {
+  background: #f9e0da;
+  color: #8c2f1c;
+}
+
+@media (width <= 560px) {
+  .control {
+    grid-template-columns: 1fr;
+  }
+
+  .control__boton {
+    width: 100%;
+  }
+}

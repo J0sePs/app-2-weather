@@ -1,0 +1,11 @@
+# Contexto de la imagen del frontend: se envía la carpeta `frontend/` completa,
+# pero sin los artefactos que `npm run build` produce en local. `node_modules`
+# se reinstala dentro de la imagen con `npm ci` a partir del lockfile, y
+# copiar el local daría como resultado una imagen distinta en cada máquina.
+
+node_modules
+dist
+.angular
+npm-debug.log*
+Dockerfile
+.dockerignore

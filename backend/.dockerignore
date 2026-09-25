@@ -1,0 +1,14 @@
+# Contexto de la imagen del backend: sólo hacen falta el manifiesto, el lockfile,
+# el paquete de aplicación y el Data Lake. El entorno virtual y los artefactos de
+# Python se regeneran dentro de la imagen.
+
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.coverage
+htmlcov
+tests
+README.md
+Dockerfile
+.dockerignore

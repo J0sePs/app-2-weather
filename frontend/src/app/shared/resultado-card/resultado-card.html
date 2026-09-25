@@ -1,0 +1,55 @@
+<article class="tarjeta" data-testid="tarjeta-resultado">
+  <header class="tarjeta__cabecera">
+    <h2 class="tarjeta__titulo">Previsión para el {{ fechaResultado() }}</h2>
+    <p class="tarjeta__nivel" [attr.data-nivel]="resultado().prediction.crowd_level">
+      {{ nivel() }}
+    </p>
+  </header>
+
+  <dl class="datos">
+    <div class="dato">
+      <dt>Visitantes estimados</dt>
+      <dd class="dato__cifra" data-testid="visitantes">{{ visitas() }} personas</dd>
+    </div>
+    <div class="dato">
+      <dt>Aforo permitido</dt>
+      <dd class="dato__cifra" data-testid="porcentaje">{{ porcentaje() }}% del aforo</dd>
+    </div>
+    <div class="dato">
+      <dt>Temperatura máxima</dt>
+      <dd class="dato__valor" data-testid="temperatura">{{ temperatura() }} °C</dd>
+    </div>
+    <div class="dato">
+      <dt>Condición</dt>
+      <dd class="dato__valor" data-testid="condicion">{{ condicion() }}</dd>
+    </div>
+    <div class="dato">
+      <dt>Probabilidad de lluvia</dt>
+      <dd class="dato__valor" data-testid="probabilidad">{{ probabilidadLluvia() }}%</dd>
+    </div>
+  </dl>
+
+  <div class="capacidad">
+    <div
+      class="capacidad__riel"
+      role="progressbar"
+      aria-label="Aforo ocupado"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      [attr.aria-valuenow]="anchoBarra()"
+    >
+      <div
+        class="capacidad__relleno"
+        data-testid="barra-capacidad"
+        [attr.data-nivel]="resultado().prediction.crowd_level"
+        [style.width.%]="anchoBarra()"
+      ></div>
+    </div>
+    <p class="capacidad__pie">{{ porcentaje() }}% del aforo permitido</p>
+  </div>
+
+  <p class="aviso" data-testid="aviso-sintetico" role="note">
+    <strong>Aviso:</strong> esta estimación se calcula sobre un historial sintético de
+    demostración. No representa conteos oficiales de visitantes de Machu Picchu.
+  </p>
+</article>

@@ -1,0 +1,42 @@
+<section class="pagina">
+  <header class="encabezado">
+    <h1 class="encabezado__titulo">Predicción de Afluencia - Machu Picchu</h1>
+    <p class="encabezado__subtitulo">
+      Elige una fecha y consulta cuántos visitantes se esperan según el clima previsto.
+    </p>
+  </header>
+
+  <form class="control" (submit)="$event.preventDefault(); consultar()">
+    <div class="control__campo">
+      <label class="control__etiqueta" for="fecha">Fecha de la consulta</label>
+      <input
+        id="fecha"
+        class="control__entrada"
+        data-testid="control-fecha"
+        type="date"
+        [value]="fecha()"
+        (input)="alCambiarFecha($event)"
+      />
+    </div>
+    <button
+      class="control__boton"
+      data-testid="boton-consultar"
+      type="submit"
+      [disabled]="botonBloqueado()"
+    >
+      {{ cargando() ? 'Consultando…' : 'Consultar Afluencia' }}
+    </button>
+  </form>
+
+  @if (cargando()) {
+    <p class="estado" data-testid="estado-carga" role="status">Consultando el pronóstico…</p>
+  }
+
+  @if (error(); as mensaje) {
+    <p class="estado estado--error" data-testid="mensaje-error" role="alert">{{ mensaje }}</p>
+  }
+
+  @if (resultado(); as prediccion) {
+    <app-resultado-card [resultado]="prediccion" />
+  }
+</section>

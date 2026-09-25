@@ -1,0 +1,17 @@
+:host {
+  display: block;
+  min-height: 100%;
+}
+
+.contenedor {
+  width: 100%;
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 3rem;
+}
+
+@media (width <= 560px) {
+  .contenedor {
+    padding: 1.25rem 1rem 2.5rem;
+  }
+}
