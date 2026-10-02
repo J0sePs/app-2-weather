@@ -141,7 +141,8 @@ infra/terraform/
 
 ### Script `user_data.sh`
 Ejecuta al primer boot:
-1. `dnf update -y && dnf install -y docker git`.
+1. `dnf update -y`.
+2. `dnf install -y git docker` (desde los repos nativos de Amazon Linux 2023 — NO usar el repo externo de Docker porque no publica para Amazon Linux).
 2. Enable + start `docker`, add `ec2-user` al grupo `docker`.
 3. Instala `docker compose` v2 plugin en `/usr/local/lib/docker/cli-plugins/`.
 4. Crea swap de 2 GB en `/swapfile` y persiste en `/etc/fstab`.

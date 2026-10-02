@@ -7,6 +7,135 @@ y sin servicios de pago.
 La estimación **no es un dato oficial**: el historial es sintético y la tarjeta de
 resultado lo advierte siempre en pantalla.
 
+## Despliegue en AWS con Terraform
+
+La infraestructura de destino (VPC, subnet, grupo de seguridad, par de claves e
+instancia EC2 `t3.micro`) se define en `infra/terraform/`. Un `terraform apply` la crea
+entera desde cero y un `terraform destroy` la elimina.
+
+Hace falta Terraform >= 1.3 (el módulo usa `pathexpand()`), credenciales de AWS y una
+dirección IP pública propia para restringir el acceso por SSH.
+
+### 1. Generar el par de claves
+
+Sin frase de paso, porque el pipeline la usa como secreto sin interacción:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/app2w-deploy -C app2w-deploy
+```
+
+### 2. Configurar las variables
+
+```bash
+cd infra/terraform
+cp terraform.tfvars.example terraform.tfvars
+```
+
+Edita `terraform.tfvars` y pon tu IP pública de salida con prefijo `/32`:
+
+```bash
+curl -s https://checkip.amazonaws.com    # ej.: 203.0.113.10 -> my_ip = "203.0.113.10/32"
+```
+
+`my_ip` no tiene valor por omisión a propósito: es el único origen permitido para el
+puerto 22, y un valor por omisión sería un rango abierto a Internet que nadie revisa. El
+archivo `terraform.tfvars` está en el `.gitignore` del módulo; sólo se versiona el
+`.example`.
+
+### 3. Crear la infraestructura
+
+```bash
+terraform init
+terraform fmt -check
+terraform validate
+terraform plan      # revisa la lista antes de continuar
+terraform apply
+```
+
+El plan debe crear exactamente ocho recursos: VPC, gateway de Internet, subnet, tabla de
+rutas y su asociación, grupo de seguridad, par de claves e instancia.
+
+### 4. Verificar el arranque
+
+La salida `ssh_command` lleva el comando de conexión listo para pegar:
+
+```bash
+terraform output ssh_command
+```
+
+El arranque de la instancia es asíncrono y dura varios minutos (actualiza el sistema e
+instala Docker). La marca de fin del arranque es la primera comprobación:
+
+```bash
+ssh -i ~/.ssh/app2w-deploy ec2-user@<ip>
+ls /tmp/bootstrap-done        # si existe, el arranque terminó bien
+docker compose version        # responde si el complemento v2 está instalado
+swapon --show                 # lista la unidad de 2 GB
+```
+
+Si `/tmp/bootstrap-done` no existe, el arranque se quedó a mitad. El arranque termina en
+`dnf update -y`, que es donde falla si el mirror de Amazon no responde. Se relanza a mano
+desde SSH —el script está en el clon, no en la instancia—:
+
+```bash
+bash ~/app-2-weather/infra/terraform/user_data.sh
+```
+
+### 5. Desplegar la aplicación
+
+El arranque deja el repositorio clonado, así que en la instancia:
+
+```bash
+cd ~/app-2-weather/infra
+docker compose up -d --build
+```
+
+Y comprobar desde fuera:
+
+```bash
+curl "http://<ip>/api/prediction?date=$(TZ=America/Lima date +%F)"
+```
+
+### 6. Secretos del pipeline
+
+`terraform output instance_public_ip` es el valor del secreto `EC2_HOST`, y el contenido
+de `~/.ssh/app2w-deploy` (la clave privada) es el de `EC2_SSH_KEY`.
+
+### Deshacer
+
+```bash
+terraform destroy
+```
+
+Elimina VPC, subnet, tabla de rutas, grupo de seguridad, par de claves e instancia. El
+par de claves local `~/.ssh/app2w-deploy` no se toca: nunca lo creó Terraform.
+
+Si sólo falla el arranque, no hace falta destruir nada: basta con relanzar
+`user_data.sh` por SSH. Si hay que reemplazar la instancia sin tocar el resto:
+
+```bash
+terraform apply -replace=aws_instance.web
+```
+
+### Si la instancia queda inaccesible por SSH
+
+Casi siempre es que `my_ip` no coincide con la IP pública de salida. El puerto 22 sólo
+acepta ese `/32`. Se recupera desde la consola de AWS (Session Manager no está
+disponible porque el módulo no crea un IAM instance profile) o añadiendo una clave nueva
+al par `app2w-deploy` desde la consola. Para cambiar el origen:
+
+```bash
+terraform apply -var 'my_ip=<tu-ip>/32'
+```
+
+### Notas
+
+- La AMI se resuelve en el plan contra el catálogo de AWS (Amazon Linux 2023, `x86_64`,
+  la más reciente). No está fijada a propósito: cuando Amazon publica una versión nueva,
+  el plan pide recrear la instancia, y recrearla vuelve a ejecutar el arranque.
+- El estado queda en `terraform.tfstate`, en local e ignorado por git. Contiene la IP
+  pública y el ARN de la instancia, pero ninguna credencial.
+
 ## Despliegue
 
 Sólo hace falta Docker. Desde el clon:
@@ -99,6 +228,7 @@ frontend/
   src/app/        SPA Angular: página, tarjeta de resultado y cliente de la API
   nginx/          Configuración de Nginx que sirve la SPA y hace de proxy
 infra/
+  terraform/      Infraestructura AWS: red, security group, EC2 y arranque
   docker-compose.yml
 ```
 

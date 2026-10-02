@@ -1,0 +1,18 @@
+# Copia este archivo a `terraform.tfvars` y ajusta los valores. El archivo real está
+# en el `.gitignore` del módulo: contiene datos del operador y no debe versionarse.
+#
+#   cp terraform.tfvars.example terraform.tfvars
+
+# Región de AWS.
+aws_region = "us-east-1"
+
+# Origen permitido para el puerto 22. Debe ser la IP pública de salida del operador,
+# con prefijo /32. Ej.: 203.0.113.10/32
+my_ip = "203.0.113.10/32"
+
+# Clave pública registrada como par de claves `app2w-deploy`. Genérala antes de aplicar:
+#   ssh-keygen -t ed25519 -f ~/.ssh/app2w-deploy -C app2w-deploy
+public_key_path = "~/.ssh/app2w-deploy.pub"
+
+# Etiqueta Project de todos los recursos.
+project_name = "app-2-weather"

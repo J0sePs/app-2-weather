@@ -1,0 +1,25 @@
+# Caché de plugins y módulos que descarga `terraform init`.
+.terraform/
+
+# Estado local. El patrón `*.tfstate*` también cubre `terraform.tfstate.backup`,
+# que contiene la misma información que el estado y es el archivo que con más
+# frecuencia acaba en un commit por no tener el nombre esperado.
+*.tfstate
+*.tfstate.*
+
+# Logs de fallo del proveedor.
+crash.log
+crash.*.log
+
+# Valores reales por entorno: contienen `my_ip` y cualquier ajuste local.
+# `terraform.tfvars.example` no queda cubierto por el patrón y sí se versiona.
+*.tfvars
+*.tfvars.json
+
+# Overrides locales, que Terraform carga automáticamente y casi nunca deben commitearse.
+override.tf
+override_*.tf
+override_*.tf.json
+
+# Archivos de plan guardados con `-out`.
+*.tfplan
