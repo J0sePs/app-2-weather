@@ -1,0 +1,124 @@
+# Verificación y publicación de la aplicación.
+#
+# Tres trabajos: las pruebas del backend, las del frontend y, sólo tras ambas en verde y
+# con aprobación humana, el despliegue a la EC2. Todo vive en un único fichero porque
+# comparten disparadores, versión de Actions y política de permisos; separar el
+# despliegue en otro fichero obligaría a encadenarlo con `workflow_run`, que es un
+# patrón con peor diagnóstico.
+
+name: CI/CD
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Ninguno de los tres trabajos escribe en el repositorio ni consulta la API de GitHub,
+# así que el token no necesita más que lectura del contenido.
+permissions:
+  contents: read
+
+# Un grupo por referencia: una pull request nunca cancela la ejecución de `main`. La
+# cancelación automática se deja sólo fuera de `main`, donde una ejecución obsoleta ya no
+# aporta nada. En `main` cancelarla sería peor: un despliegue a la espera de aprobación
+# se quedaría a medias por un push posterior.
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  backend-test:
+    name: Backend (pytest)
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Instalar Python 3.12
+        run: uv python install 3.12
+
+      # `--frozen` es lo que hace reproducible la verificación: resuelve exactamente lo
+      # que dice `uv.lock` en lugar de recalcular el árbol de dependencias. Sin esto el
+      # pipeline podría pasar con versiones que nunca llegan a la instancia.
+      - name: Sincronizar dependencias
+        run: uv sync --frozen
+
+      # No se pasan banderas de pytest: el manifiesto ya declara `testpaths` y
+      # `addopts = "--cov=app --cov-fail-under=80"`, así que el umbral de cobertura es el
+      # del proyecto y no una constante duplicada aquí que pueda quedarse obsoleta.
+      - name: Ejecutar la suite
+        run: uv run pytest
+
+  frontend-test:
+    name: Frontend (Karma)
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # Karma necesita un binario de Chrome y la imagen del runner no lo garantiza.
+      # `ChromeHeadless` no necesita `--no-sandbox`: los runners alojados tienen los
+      # espacios de nombres de usuario disponibles.
+      - name: Instalar Chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # `test:ci` es `ng test --watch=false --browsers=ChromeHeadless`, declarado en
+      # `frontend/package.json` para que el modo interactivo siga siendo el modo local.
+      - name: Ejecutar la suite
+        run: npm run test:ci
+
+  deploy:
+    name: Desplegar en EC2
+    # Sólo en `push`, nunca en pull request: las PR verdes no publican.
+    if: github.event_name == 'push'
+    needs: [backend-test, frontend-test]
+    runs-on: ubuntu-22.04
+    environment: production
+    # El build multietapa del frontend ocurre en una t3.micro con 1 GB de RAM y se
+    # apoya en el swap de 2 GB que instaló `user_data.sh`. Es lento, y un límite corto
+    # convertiría lentitud en un fallo de despliegue.
+    timeout-minutes: 20
+    steps:
+      - name: Escribir la clave privada de despliegue
+        env:
+          DEPLOY_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          printf '%s\n' "$DEPLOY_KEY" > "$RUNNER_TEMP/deploy_key"
+          chmod 600 "$RUNNER_TEMP/deploy_key"
+
+      # `environment: production` es lo que aporta la aprobación: GitHub detiene el
+      # trabajo hasta que un revisor requerido lo acepta, y sólo entonces expone los
+      # secretos del entorno.
+      - name: Publicar por SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ runner.temp }}/deploy_key
+          script: |
+            set -e
+            cd ~/app-2-weather
+            git pull origin main
+            cd infra
+            docker compose up -d --build
+            docker image prune -f

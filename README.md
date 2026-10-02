@@ -90,6 +90,9 @@ cd ~/app-2-weather/infra
 docker compose up -d --build
 ```
 
+Este es el camino de la primera publicación y el de recuperación; las siguientes ocurren
+solas al integrar en `main` (ver «Integración y despliegue continuos»).
+
 Y comprobar desde fuera:
 
 ```bash
@@ -98,8 +101,10 @@ curl "http://<ip>/api/prediction?date=$(TZ=America/Lima date +%F)"
 
 ### 6. Secretos del pipeline
 
-`terraform output instance_public_ip` es el valor del secreto `EC2_HOST`, y el contenido
-de `~/.ssh/app2w-deploy` (la clave privada) es el de `EC2_SSH_KEY`.
+`terraform output instance_public_ip` es el valor del secreto `EC2_HOST`, `ec2-user` es el
+de `EC2_USER`, y el contenido de `~/.ssh/app2w-deploy` (la clave privada) es el de
+`EC2_SSH_KEY`. Los tres se dan de alta como secretos del entorno `production`; el
+procedimiento está en «Integración y despliegue continuos».
 
 ### Deshacer
 
@@ -135,6 +140,89 @@ terraform apply -var 'my_ip=<tu-ip>/32'
   el plan pide recrear la instancia, y recrearla vuelve a ejecutar el arranque.
 - El estado queda en `terraform.tfstate`, en local e ignorado por git. Contiene la IP
   pública y el ARN de la instancia, pero ninguna credencial.
+
+## Integración y despliegue continuos
+
+`.github/workflows/ci-cd.yml` define un flujo con tres trabajos:
+
+| Trabajo | Cuándo corre | Qué hace |
+| --- | --- | --- |
+| `backend-test` | PR a `main` y `push` a `main` | `uv sync --frozen` y `uv run pytest` en Python 3.12. |
+| `frontend-test` | PR a `main` y `push` a `main` | `npm ci` y `npm run test:ci` en Node 20 con Chrome headless. |
+| `deploy` | sólo `push` a `main` | Se conecta por SSH y reconstruye los servicios en la instancia. |
+
+`deploy` depende de los dos trabajos de prueba: si cualquiera falla, GitHub lo marca como
+omitido y no publica. Una pull request en verde nunca despliega.
+
+El despliegue se construye **en la instancia**, no en el runner: el intercambio de 2 GB
+que instaló `user_data.sh` es lo que permite el build multietapa del frontend en una
+`t3.micro` de 1 GB. Por eso puede tardar varios minutos.
+
+### Alta del entorno `production` (una vez, en GitHub)
+
+El flujo no lleva secretos ni reglas de protección en el repositorio: eso vive en el
+entorno, y por eso el trabajo `deploy` declara `environment: production`.
+
+1. Crear el entorno en **Settings → Environments → New environment**, con el nombre
+   `production`.
+2. En **Required reviewers**, activar la regla y añadir al menos un revisor. Sin esto el
+   despliegue saldría sin revisión de nadie.
+3. Añadir los tres secretos del entorno (**Environment secrets**, no *repository
+   secrets*):
+
+   | Secreto | Valor |
+   | --- | --- |
+   | `EC2_HOST` | `terraform output instance_public_ip` de `infra/terraform` |
+   | `EC2_USER` | `ec2-user` |
+   | `EC2_SSH_KEY` | contenido íntegro de `~/.ssh/app2w-deploy` |
+
+   La clave se pega como multilínea y no debe tener frase de paso, porque el pipeline no
+   puede escribirla en un prompt.
+
+Los secretos son **del entorno**, no del repositorio, a propósito: así los trabajos de
+prueba de una pull request abierta por un tercero nunca ven material de acceso al
+servidor.
+
+### Qué ejecuta el despliegue
+
+```bash
+set -e
+cd ~/app-2-weather
+git pull origin main
+cd infra
+docker compose up -d --build
+docker image prune -f
+```
+
+`set -e` hace que un fallo intermedio no continúe hasta un paso que depende de él. No hay
+`sudo`: el usuario de la instancia ya está en el grupo `docker`.
+
+### Publicar
+
+Integrar en `main` y aprobar la ejecución en espera. El trabajo aparece como
+*waiting for approval* en la pestaña **Actions**.
+
+### Reversión
+
+No hay rollback automático: una publicación fallida se deshace a mano, desde la
+instancia.
+
+```bash
+ssh -i ~/.ssh/app2w-deploy ec2-user@<ip>
+cd ~/app-2-weather
+git reset --hard <commit-anterior>
+cd infra && docker compose up -d --build
+```
+
+Mientras tanto, un despliegue que falla a mitad deja los contenedores anteriores en
+servicio: `up -d` no para el servicio que no llegó a reconstruirse.
+
+### Alcance
+
+No hay *smoke tests* posteriores al despliegue: se considera correcto cuando el script
+termina con código cero. Tampoco hay `plan`/`apply` de Terraform en el pipeline —la
+infraestructura se cambia a mano con `terraform apply`— ni publicación de imágenes en un
+registro: se construyen y se sirven desde la misma instancia.
 
 ## Despliegue
 
@@ -211,7 +299,7 @@ producción. Si el backend vive en otro puerto, se ajusta ese archivo.
 cd backend && uv run pytest
 
 # Frontend: 78 pruebas en Chrome headless (necesita CHROME_BIN o un Chrome instalado).
-cd frontend && npx ng test --watch=false --browsers=ChromeHeadless
+cd frontend && npm run test:ci
 
 # Verificación del Data Lake y la compilación de la aplicación.
 cd frontend && npm run build
@@ -220,6 +308,9 @@ cd frontend && npm run build
 ## Estructura
 
 ```
+.github/
+  workflows/
+    ci-cd.yml     Pruebas de backend y frontend, y despliegue por SSH a la instancia
 backend/
   app/            API FastAPI: Data Lake, clima, predicción y rutas
   datalake/       Generador del historial sintético y el CSV versionado
