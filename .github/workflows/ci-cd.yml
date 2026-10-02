@@ -99,13 +99,6 @@ jobs:
     # convertiría lentitud en un fallo de despliegue.
     timeout-minutes: 20
     steps:
-      - name: Escribir la clave privada de despliegue
-        env:
-          DEPLOY_KEY: ${{ secrets.EC2_SSH_KEY }}
-        run: |
-          printf '%s\n' "$DEPLOY_KEY" > "$RUNNER_TEMP/deploy_key"
-          chmod 600 "$RUNNER_TEMP/deploy_key"
-
       # `environment: production` es lo que aporta la aprobación: GitHub detiene el
       # trabajo hasta que un revisor requerido lo acepta, y sólo entonces expone los
       # secretos del entorno.
@@ -114,7 +107,7 @@ jobs:
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
-          key: ${{ runner.temp }}/deploy_key
+          key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
             cd ~/app-2-weather
